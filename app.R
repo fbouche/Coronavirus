@@ -11,7 +11,7 @@ library(reshape)
 
 ### Praparation des données
 
-data = read.csv("full_data.csv")
+data = read.csv("full_data.csv",sep = ',')
 temp = data
 temp$date = as.Date(temp$date)
 temp$location = as.character(temp$location)
@@ -65,7 +65,7 @@ ui <- dashboardPage(
                         column(width = 6,
                                box("Les données sont les officiels, récupérés sur data.world.com. Attention le nombre de cas
                 n'est pas forcément fiable (changement de comptage et de détection de cas). Les codes et
-                les données sont en accès libre sur . Les pages ''Régions de France'', ''Pays'', et ''Internationale'' sont en cours ", width = 12, height = 165)
+                les données sont en accès libre : https://github.com/fbouche/Coronavirus. Les pages ''Régions de France'', ''Pays'', et ''Internationale'' sont en cours ", width = 12, height = 165)
                         )
                     ),
                     fluidRow(
