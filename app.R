@@ -7,14 +7,32 @@ library(shiny)
 library(plotly)
 library(scales)
 library(reshape)
-
+library(utils)
+library(httr)
+library(data.table)
 
 ### Praparation des données
 
-data = read.csv("full_data.csv",sep = ',')
-temp = data
-temp$date = as.Date(temp$date)
-temp$location = as.character(temp$location)
+GET("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv", authenticate(":", ":", type="ntlm"), write_disk(tf <- tempfile(fileext = ".csv")))
+data = read.csv(tf)
+
+temp = data[,c(1,7,10,5,6)]
+names(temp) = c('date','location','pop','new_cases','new_deaths')
+temp$date = as.Date(temp$date,'%d/%m/%Y')
+
+pays = unique(temp$location)
+date = sort(unique(temp$date))
+
+temp = temp[order(c(temp$location),temp$date),]
+
+
+t1 = data.table(group1 = temp$location,sum = temp$new_cases)
+t2 = data.frame(t1[,list(cumsum = cumsum(sum)),by = list(group1)])
+temp$total_cases = t2$cumsum
+
+t1 = data.table(group1 = temp$location,sum = temp$new_deaths)
+t2 = data.frame(t1[,list(cumsum = cumsum(sum)),by = list(group1)])
+temp$total_deaths = t2$cumsum
 
 ### date de confinement
 
@@ -39,6 +57,8 @@ aug_cas = (data1$new_cases[j_0] - data1$new_cases[j_1])/data1$new_cases[j_1]
 
 nbr_conf = as.numeric(difftime(data1$date[j_0],conf[conf$location == 'France',2]))
 
+### ui
+
 ui <- dashboardPage(
     dashboardHeader(title = "Coronavirus"),
     dashboardSidebar(
@@ -56,16 +76,16 @@ ui <- dashboardPage(
                     fluidRow(
                         column(width = 6,
                                box(paste("Données"," :  dernière mise à jour le", format(max(data1$date),"%d %B")," après ",
-                                         nbr_conf," jours de confinement"), width = 12),
+                                         nbr_conf," jours de confinement."), width = 12),
                                fluidRow(
                                    valueBoxOutput("Francemortaug", width = 6),
                                    valueBoxOutput("Francecasaug", width = 6)
                                )
                         ),
                         column(width = 6,
-                               box("Les données sont les officiels, récupérés sur data.world.com. Attention le nombre de cas
+                               box("Les données sont les officielles, récupérées sur https://ourworldindata.org/coronavirus-source-data. Attention le nombre de cas
                 n'est pas forcément fiable (changement de comptage et de détection de cas). Les codes et
-                les données sont en accès libre : https://github.com/fbouche/Coronavirus. Les pages ''Régions de France'', ''Pays'', et ''Internationale'' sont en cours ", width = 12, height = 165)
+                les données sont en accès libre : https://github.com/fbouche/Coronavirus. Les pages ''Régions de France'', ''Pays'', et ''Internationale'' sont en cours.", width = 12, height = 165)
                         )
                     ),
                     fluidRow(
@@ -101,8 +121,7 @@ ui <- dashboardPage(
     )
 )
 
-
-
+### server
 
 server <- function(input, output) {
     
@@ -201,6 +220,7 @@ server <- function(input, output) {
         )
     })
 }
+
 
 ########### Run the application 
 
